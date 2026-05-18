@@ -19,15 +19,13 @@ The app is iOS-first, local-first, and built around private saved context. There
 
 ## Demo
 
-The images below come from local end-to-end test artifacts using synthetic or redacted demo content.
+The demo below comes from local end-to-end test artifacts using synthetic or redacted demo content. It shows onboarding, local setup, sharing screenshots into Tag, source-backed cards, card actions, Spaces, and chat over saved context.
 
-| Today | Ask Tag |
-| --- | --- |
-| ![Today feed](docs/assets/demo/today.png) | ![Chat with citations](docs/assets/demo/chat.png) |
+<p align="center">
+  <video src="docs/assets/demo/tag_demo.mp4" controls width="100%" title="Tag end-to-end demo"></video>
+</p>
 
-| Source Evidence | Guided Planning |
-| --- | --- |
-| ![Source preview](docs/assets/demo/source.png) | ![Planning preview](docs/assets/demo/planning.png) |
+[Open the demo video](docs/assets/demo/tag_demo.mp4)
 
 ## What Tag Does
 
