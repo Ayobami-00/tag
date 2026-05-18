@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest a product improvement for Tag.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tag is a local-first personal intention inbox. Requests should preserve the core promise: never lose the reason you saved something.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need would this solve?
+      placeholder: I save multiple related articles and want Tag to suggest a study plan only after I confirm it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Tag do?
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Import / share extension
+        - Today
+        - Tag Cards
+        - Source evidence
+        - Spaces
+        - Chat / retrieval
+        - Guided planning
+        - Notifications
+        - Model setup
+        - Developer experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any simpler or more local-first version of the idea?
+  - type: checkboxes
+    id: guardrails
+    attributes:
+      label: Product guardrails
+      options:
+        - label: This can work without login, cloud sync, telemetry, or a remote LLM.
+        - label: This keeps source evidence available for user-visible cards.
+        - label: This does not make suggestion or passive cards schedule notifications.
+        - label: This does not create goal cards from chat or suggestions without user confirmation.

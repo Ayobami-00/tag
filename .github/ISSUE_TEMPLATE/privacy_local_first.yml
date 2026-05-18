@@ -1,0 +1,54 @@
+name: Privacy or local-first concern
+description: Report a privacy, local-only, evidence, or notification-policy concern.
+title: "[Privacy]: "
+labels:
+  - privacy
+  - local-first
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not post secrets, private screenshots, local databases, or unredacted personal data. For exploitable vulnerabilities, use private vulnerability reporting if it is enabled.
+  - type: dropdown
+    id: concern_type
+    attributes:
+      label: Concern type
+      options:
+        - Possible network / remote processing
+        - Private data stored unexpectedly
+        - Missing or broken source evidence
+        - Notification scheduled when it should not be
+        - Card created without required confirmation
+        - Sensitive data in logs or artifacts
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What local-first or privacy rule appears to be broken?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Fresh install.
+        2. Deny network access / go offline.
+        3. Import a redacted screenshot.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Add redacted logs, screenshots, or observations.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Redaction check
+      options:
+        - label: I have redacted private source content, names, addresses, emails, tokens, and local database contents.
+          required: true

@@ -1,0 +1,12 @@
+export 'DI/index.dart';
+export 'data/data_sources/onboarding_local_data_source.dart';
+export 'data/repositories/onboarding_repository_impl.dart';
+export 'domain/entities/onboarding_user_profile.dart';
+export 'domain/repositories/onboarding_repository.dart';
+export 'domain/use_cases/complete_onboarding.dart';
+export 'domain/use_cases/load_user_profile.dart';
+export 'domain/use_cases/request_notification_permission.dart';
+export 'domain/use_cases/save_avatar.dart';
+export 'domain/use_cases/save_nickname.dart';
+export 'presentation/logic/onboarding_cubit.dart';
+export 'presentation/screens/onboarding_screen.dart';
