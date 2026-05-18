@@ -134,8 +134,6 @@ Physical iPhone release runs require Apple signing, provisioning, and Developer 
 flutter run -d <physical_device_id> --release
 ```
 
-See [DEMO.md](DEMO.md) for a local walkthrough and validation checklist.
-
 ## Contributing
 
 Issues and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing and use the GitHub issue templates for bug reports, feature requests, and privacy/local-first concerns.
