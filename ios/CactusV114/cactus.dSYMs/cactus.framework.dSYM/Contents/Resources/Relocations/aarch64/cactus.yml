@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     'ios/CactusV114/cactus.xcframework/ios-arm64/cactus.framework/cactus'
+relocations:     []
+...

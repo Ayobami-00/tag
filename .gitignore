@@ -1,0 +1,116 @@
+# Tag project ignores
+#
+# Keep planning/reference context local and untracked, but readable by agents:
+# - PRD.md
+# - techical_doc.md
+# - theme.md
+# - milestones/
+# - references/
+#
+# Ignore generated build outputs, local runtime files, simulator artifacts,
+# downloaded model weights, and milestone evidence captures.
+
+# Local planning/reference context for AI agents
+/PRD.md
+/techical_doc.md
+/theme.md
+/milestones/
+/references/
+/docs/submission/
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo
+*.tmp
+*.temp
+*.log
+.idea/
+.vscode/
+*.iml
+
+# Dart / Flutter / Pub
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+**/doc/api/
+
+# Flutter symbolication / obfuscation outputs
+app.*.symbols
+app.*.map.json
+
+# iOS Flutter generated files
+/ios/Flutter/App.framework
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/ephemeral/
+/ios/Flutter/app.flx
+/ios/Flutter/app.zip
+/ios/Flutter/flutter_assets/
+/ios/Flutter/flutter_export_environment.sh
+/ios/ServiceDefinitions.json
+
+# iOS / Xcode generated files
+/ios/Pods/
+/ios/.symlinks/
+/ios/DerivedData/
+/ios/build/
+/ios/Runner.xcworkspace/xcuserdata/
+/ios/Runner.xcodeproj/xcuserdata/
+/ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Generated plugin registration should be created by Flutter tooling
+/ios/Runner/GeneratedPluginRegistrant.h
+/ios/Runner/GeneratedPluginRegistrant.m
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.xcconfig.local
+.envrc
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.p12
+*.pem
+*.key
+*.ipa
+*.xcarchive/
+/ios/*.ipa
+/ios/*.xcarchive/
+/fastlane/report.xml
+/fastlane/Preview.html
+/fastlane/screenshots/
+/fastlane/test_output/
+
+# Test and coverage output
+/coverage/
+lcov.info
+test-results/
+
+# Milestone screenshots, videos, logs, and command output evidence
+/artifacts/
+
+# Local app/runtime data generated during development
+/tmp/
+/local_data/
+/debug/
+/exports/
+/assets/source/
+
+# Downloaded or converted on-device model assets
+/models/
+/cactus_models/
+*.gguf
+*.safetensors
+*.onnx
+*.tflite
+*.mlmodelc/
