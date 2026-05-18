@@ -19,8 +19,6 @@ The app is iOS-first, local-first, and built around private saved context. There
 
 ## Demo
 
-The demo below comes from local end-to-end test artifacts using synthetic or redacted demo content. It shows onboarding, local setup, sharing screenshots into Tag, source-backed cards, card actions, Spaces, and chat over saved context.
-
 <p align="center">
   <a href="https://youtu.be/hwiTligAAxU" aria-label="Watch the Tag demo on YouTube">
     <img src="https://img.youtube.com/vi/hwiTligAAxU/maxresdefault.jpg" alt="Tag end-to-end demo video" width="100%" />
