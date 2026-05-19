@@ -49,7 +49,10 @@ class SupabaseBetaFeedbackDataSource {
       request.write(jsonEncode(payload));
 
       final response = await request.close().timeout(timeout);
-      final responseBody = await utf8.decoder.bind(response).join();
+      final responseBody = await utf8.decoder
+          .bind(response)
+          .join()
+          .timeout(timeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw BetaFeedbackException(

@@ -179,16 +179,6 @@ function demoProofsFromBody(body) {
       // Ignore malformed historical markers; the gate will fail if none parse.
     }
   }
-
-  if (/tag demo proof\s*:\s*pass/i.test(body)) {
-    proofs.push({
-      status: "pass",
-      head_sha: lineValue(body, "Head SHA"),
-      video: lineValue(body, "Video") || lineValue(body, "Video URL"),
-      command_log: lineValue(body, "Command log") || lineValue(body, "Log"),
-      attempt: lineValue(body, "Attempt"),
-    });
-  }
   return proofs;
 }
 
@@ -418,15 +408,6 @@ function gitHubRepoFromRemote() {
   } catch {
     return "";
   }
-}
-
-function lineValue(body, label) {
-  const match = body.match(new RegExp(`^\\s*${escapeRegex(label)}\\s*:\\s*(.+)$`, "im"));
-  return match?.[1]?.trim() || "";
-}
-
-function escapeRegex(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function oneLine(value, max) {
