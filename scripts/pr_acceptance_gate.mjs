@@ -187,6 +187,7 @@ function latestGreptileScore({ comments, reviews, reviewComments, checkRuns }) {
       body: comment.body || "",
       author: comment.user?.login || "",
       created_at: comment.updated_at || comment.created_at,
+      trusted: greptilePattern.test(comment.user?.login || ""),
     });
   }
   for (const review of reviews) {
@@ -194,13 +195,7 @@ function latestGreptileScore({ comments, reviews, reviewComments, checkRuns }) {
       body: review.body || "",
       author: review.user?.login || "",
       created_at: review.submitted_at,
-    });
-  }
-  for (const comment of reviewComments) {
-    sources.push({
-      body: comment.body || "",
-      author: comment.user?.login || "",
-      created_at: comment.updated_at || comment.created_at,
+      trusted: greptilePattern.test(review.user?.login || ""),
     });
   }
   for (const check of checkRuns) {
@@ -210,11 +205,14 @@ function latestGreptileScore({ comments, reviews, reviewComments, checkRuns }) {
         .join("\n"),
       author: check.app?.slug || check.app?.name || "",
       created_at: check.completed_at || check.started_at || check.created_at,
+      trusted:
+        greptilePattern.test(check.app?.slug || check.app?.name || "") ||
+        greptilePattern.test(check.name || ""),
     });
   }
 
   return sources
-    .filter((source) => greptilePattern.test(source.author) || /greptile/i.test(source.body))
+    .filter((source) => source.trusted)
     .map((source) => ({ ...source, score: scoreFromText(source.body) }))
     .filter((source) => source.score)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
@@ -228,8 +226,7 @@ function scoreFromText(text) {
 
   const patterns = [
     /\b(?:review score|score|rating|overall)\b\s*[:=-]?\s*(\d+)\s*\/\s*(\d+)\b/i,
-    /\b(\d+)\s*\/\s*5\b/i,
-    /\b(\d+)\s+out\s+of\s+5\b/i,
+    /\b(?:review score|score|rating|overall)\b\s*[:=-]?\s*(\d+)\s+out\s+of\s+5\b/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -298,9 +295,8 @@ function isBot(source) {
 
 function isBlockerComment(body) {
   return /(^|\n)\s*\/codex\s+(retry|again|not[- ]fixed)\b/i.test(body) ||
-    /\bnot fixed\b/i.test(body) ||
-    /\bstill broken\b/i.test(body) ||
-    /\b(?:merge blocker|blocking merge|blocks merge|do not merge)\b/i.test(body) ||
+    /(^|\n)\s*(?:not fixed|still broken)\b/i.test(body) ||
+    /(^|\n)\s*(?:merge blocker|blocking merge|blocks merge|do not merge)\b/i.test(body) ||
     /(^|\n)\s*(?:blocking|blocker)\s*:/i.test(body);
 }
 
