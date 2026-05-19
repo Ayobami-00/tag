@@ -78,7 +78,7 @@ class _TodayView extends StatelessWidget {
           actions: [
             if (showBetaFeedbackAction)
               IconButton(
-                onPressed: () => context.go(betaFeedbackPath),
+                onPressed: () => context.push(betaFeedbackPath),
                 tooltip: 'Beta feedback',
                 icon: const Icon(Icons.bug_report_outlined),
               ),

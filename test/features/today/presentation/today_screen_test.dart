@@ -219,8 +219,13 @@ void main() {
     await tester.tap(find.byTooltip('Beta feedback'));
     await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.path, betaFeedbackPath);
+    expect(router.canPop(), isTrue);
     expect(find.text('Beta feedback route'), findsOneWidget);
+
+    router.pop();
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, todayPath);
 
     await _disposeWidgetTree(tester);
   });
