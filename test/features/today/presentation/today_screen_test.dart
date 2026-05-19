@@ -167,6 +167,64 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
+  testWidgets('opens beta feedback from the Today app bar in beta builds', (
+    tester,
+  ) async {
+    final appConfig = AppConfig(betaFeedbackEnabled: true);
+    await locator.unregister<AppConfig>();
+    locator.registerSingleton<AppConfig>(appConfig);
+    final cubit = AppCubit(
+      appConfig: appConfig,
+      loadUserProfile: LoadUserProfile(
+        _FakeOnboardingRepository(_completedProfile()),
+      ),
+      prepareRequiredLocalModels: PrepareRequiredLocalModels(
+        _FakeModelPreparationRepository(
+          preparationFuture: Future<void>.value(),
+        ),
+      ),
+      aiJobQueueRunner: _FakeAiJobQueueRunner(),
+      minimumModelPreparationVisibility: Duration.zero,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.start();
+
+    final router = GoRouter(
+      initialLocation: todayPath,
+      routes: [
+        GoRoute(path: todayPath, builder: (_, __) => const TodayScreen()),
+        GoRoute(
+          path: betaFeedbackPath,
+          builder: (_, __) =>
+              const Scaffold(body: Center(child: Text('Beta feedback route'))),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: cubit,
+        child: MaterialApp.router(
+          theme: TagTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Beta feedback'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Beta feedback'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, betaFeedbackPath);
+    expect(find.text('Beta feedback route'), findsOneWidget);
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('opens FAB chat and creates a persisted chat session', (
     tester,
   ) async {
