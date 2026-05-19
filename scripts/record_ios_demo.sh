@@ -11,9 +11,10 @@ shift 2
 
 artifact_root="artifacts/demo_proofs/${attempt_name}"
 mkdir -p "$artifact_root"
+artifact_root_abs="$(cd "$artifact_root" && pwd)"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-video_path="${artifact_root}/demo_${timestamp}.mp4"
+video_path="${artifact_root_abs}/demo_${timestamp}.mp4"
 log_path="${artifact_root}/command_${timestamp}.log"
 
 echo "Recording simulator video to ${video_path}"
@@ -35,6 +36,12 @@ set -e
 
 cleanup
 trap - EXIT
+
+if [[ ! -s "$video_path" ]]; then
+  echo "Simulator video was not created. Recorder output:" >&2
+  cat /tmp/tag_demo_record_video.log >&2 || true
+  exit 1
+fi
 
 echo "Command log: ${log_path}"
 echo "Video: ${video_path}"
