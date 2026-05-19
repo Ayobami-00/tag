@@ -71,7 +71,8 @@ class _BetaFeedbackPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () => context.go(betaFeedbackPath),
+                    key: const ValueKey('settings_open_beta_feedback_button'),
+                    onPressed: () => context.push(betaFeedbackPath),
                     icon: const Icon(Icons.arrow_forward_rounded),
                     label: const Text('Open beta feedback'),
                   ),

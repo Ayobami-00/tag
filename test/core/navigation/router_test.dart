@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tag/app.dart';
 import 'package:tag/core/index.dart';
+import 'package:tag/utils/index.dart';
 import '../../test_support/source_ingestion_test_support.dart';
 
 void main() {
@@ -19,7 +21,10 @@ void main() {
       'tag_router_docs_',
     );
     setUpAppLocator(
-      appConfig: AppConfig(autoDownloadRequiredModels: false),
+      appConfig: AppConfig(
+        autoDownloadRequiredModels: false,
+        betaFeedbackEnabled: true,
+      ),
       tagDatabase: database,
       localFileStore: LocalFileStoreImpl(
         appDocumentsDirectoryProvider: () async => documentsDirectory,
@@ -87,6 +92,58 @@ void main() {
       }
       expect(find.text(entry.value), findsWidgets);
     }
+
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('settings beta feedback entry preserves back navigation', (
+    tester,
+  ) async {
+    final settingsRouter = GoRouter(
+      initialLocation: settingsPath,
+      routes: [
+        GoRoute(
+          path: settingsPath,
+          builder: (_, __) => const SettingsPlaceholderScreen(),
+        ),
+        GoRoute(
+          path: betaFeedbackPath,
+          builder: (_, __) => Scaffold(
+            appBar: AppBar(title: const Text('Beta feedback')),
+            body: const Text('Beta feedback body'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(settingsRouter.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: TagTheme.lightTheme,
+        routerConfig: settingsRouter,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(locator<AppConfig>().betaFeedbackEnabled, isTrue);
+    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('Open beta feedback'), findsOneWidget);
+
+    final betaFeedbackButton = find.byKey(
+      const ValueKey('settings_open_beta_feedback_button'),
+    );
+    await tester.ensureVisible(betaFeedbackButton);
+    await tester.tap(betaFeedbackButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beta feedback body'), findsOneWidget);
+    expect(settingsRouter.canPop(), isTrue);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('Beta feedback body'), findsNothing);
 
     await _disposeWidgetTree(tester);
   });
