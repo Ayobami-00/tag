@@ -26,17 +26,19 @@ const greptilePattern = new RegExp(
 );
 
 const pr = await api(`/repos/${owner}/${repoName}/pulls/${prNumber}`);
-const [comments, reviews, reviewComments, checks] = await Promise.all([
-  api(`/repos/${owner}/${repoName}/issues/${prNumber}/comments?per_page=100`),
-  api(`/repos/${owner}/${repoName}/pulls/${prNumber}/reviews?per_page=100`),
-  api(`/repos/${owner}/${repoName}/pulls/${prNumber}/comments?per_page=100`),
-  api(`/repos/${owner}/${repoName}/commits/${pr.head.sha}/check-runs?per_page=100`, {
-    accept: "application/vnd.github+json",
-  }),
+const [comments, reviews, reviewComments, checkRuns] = await Promise.all([
+  apiPaginated(`/repos/${owner}/${repoName}/issues/${prNumber}/comments?per_page=100`),
+  apiPaginated(`/repos/${owner}/${repoName}/pulls/${prNumber}/reviews?per_page=100`),
+  apiPaginated(`/repos/${owner}/${repoName}/pulls/${prNumber}/comments?per_page=100`),
+  apiPaginated(
+    `/repos/${owner}/${repoName}/commits/${pr.head.sha}/check-runs?per_page=100`,
+    { accept: "application/vnd.github+json" },
+    "check_runs",
+  ),
 ]);
 
 const failures = [];
-const checkResult = requiredCheckResult(checks.check_runs || [], requiredChecks);
+const checkResult = requiredCheckResult(checkRuns, requiredChecks);
 if (!checkResult.ok) failures.push(...checkResult.failures);
 
 const proof = latestDemoProof(pr, comments);
@@ -63,7 +65,7 @@ const greptile = latestGreptileScore({
   comments,
   reviews,
   reviewComments,
-  checkRuns: checks.check_runs || [],
+  checkRuns,
 });
 if (!greptile) {
   failures.push(`Missing Greptile ${greptileScore} review score.`);
@@ -219,8 +221,13 @@ function latestGreptileScore({ comments, reviews, reviewComments, checkRuns }) {
 }
 
 function scoreFromText(text) {
+  const confidence = text.match(
+    /\bconfidence\s+score\b\s*:?\s*(\d+)\s*\/\s*(\d+)\b/i,
+  );
+  if (confidence) return `${Number(confidence[1])}/${Number(confidence[2])}`;
+
   const patterns = [
-    /\b(?:score|rating|review score|overall)\s*[:=-]?\s*(\d+)\s*\/\s*(\d+)\b/i,
+    /\b(?:review score|score|rating|overall)\b\s*[:=-]?\s*(\d+)\s*\/\s*(\d+)\b/i,
     /\b(\d+)\s*\/\s*5\b/i,
     /\b(\d+)\s+out\s+of\s+5\b/i,
   ];
@@ -259,6 +266,7 @@ function unresolvedHumanBlocker({ comments, reviews, reviewComments }) {
 
   for (const review of reviews) {
     if (isBot({ author: review.user?.login || "", type: review.user?.type || "" })) continue;
+    if (!["APPROVED", "CHANGES_REQUESTED"].includes(review.state)) continue;
     const prior = latestReviewByUser.get(review.user.login);
     if (!prior || new Date(review.submitted_at) > new Date(prior.submitted_at)) {
       latestReviewByUser.set(review.user.login, review);
@@ -292,7 +300,8 @@ function isBlockerComment(body) {
   return /(^|\n)\s*\/codex\s+(retry|again|not[- ]fixed)\b/i.test(body) ||
     /\bnot fixed\b/i.test(body) ||
     /\bstill broken\b/i.test(body) ||
-    /\bblocking\b/i.test(body);
+    /\b(?:merge blocker|blocking merge|blocks merge|do not merge)\b/i.test(body) ||
+    /(^|\n)\s*(?:blocking|blocker)\s*:/i.test(body);
 }
 
 function isResolveComment(body) {
@@ -315,14 +324,53 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+async function apiPaginated(path, options = {}, itemKey = null) {
+  const rows = [];
+  let next = `https://api.github.com${path}`;
+  while (next) {
+    const response = await fetch(next, {
+      headers: {
+        accept: options.accept || "application/vnd.github+json",
+        authorization: `Bearer ${token}`,
+        "x-github-api-version": "2022-11-28",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub API ${next} failed: ${response.status} ${await response.text()}`);
+    }
+    const json = await response.json();
+    if (itemKey) {
+      rows.push(...(json[itemKey] || []));
+    } else if (Array.isArray(json)) {
+      rows.push(...json);
+    } else {
+      return json;
+    }
+    next = nextPageUrl(response.headers.get("link"));
+  }
+  return rows;
+}
+
 function prNumberFromEvent(name, payload) {
   if (payload.pull_request?.number) return payload.pull_request.number;
   if (payload.issue?.pull_request && payload.issue?.number) return payload.issue.number;
-  if (payload.review?.pull_request_url) return Number(payload.pull_request?.number);
+  if (payload.review?.pull_request_url) {
+    const match = String(payload.review.pull_request_url).match(/\/pulls\/(\d+)$/);
+    return match ? Number(match[1]) : null;
+  }
   if (name === "workflow_run") {
     return payload.workflow_run?.pull_requests?.[0]?.number;
   }
   return null;
+}
+
+function nextPageUrl(linkHeader) {
+  if (!linkHeader) return null;
+  const nextLink = linkHeader
+    .split(",")
+    .map((link) => link.trim())
+    .find((link) => link.endsWith('rel="next"'));
+  return nextLink?.match(/<([^>]+)>/)?.[1] || null;
 }
 
 function numberArg(name) {

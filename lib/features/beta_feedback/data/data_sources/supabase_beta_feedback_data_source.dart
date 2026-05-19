@@ -16,6 +16,7 @@ class SupabaseBetaFeedbackDataSource {
   final AppConfig _appConfig;
   final HttpClient Function() _httpClientFactory;
   final Duration timeout;
+  static const int maxAttachmentBytes = 8 * 1024 * 1024;
 
   Future<BetaFeedbackSubmissionResult> submit({
     required BetaFeedbackReportDraft draft,
@@ -98,6 +99,11 @@ class SupabaseBetaFeedbackDataSource {
 
     for (final attachment in draft.attachments) {
       final bytes = await File(attachment.path).readAsBytes();
+      if (bytes.length > maxAttachmentBytes) {
+        throw const BetaFeedbackException(
+          'The screenshot is over 8 MB. Please choose a smaller image.',
+        );
+      }
       attachments.add({
         'filename': attachment.fileName,
         'content_type': attachment.contentType,
