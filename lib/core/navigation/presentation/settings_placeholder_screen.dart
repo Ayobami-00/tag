@@ -1,25 +1,86 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tag/core/DI/di.dart';
+import 'package:tag/core/config/app_config.dart';
 import 'package:tag/core/local_storage/database/database_health_check.dart';
 import 'package:tag/core/local_storage/file_store/local_file_store.dart';
 import 'package:tag/core/navigation/presentation/placeholder_route_screen.dart';
+import 'package:tag/core/navigation/route_constants.dart';
+import 'package:tag/utils/index.dart';
 
 class SettingsPlaceholderScreen extends StatelessWidget {
   const SettingsPlaceholderScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final appConfig = locator<AppConfig>();
+    final showBetaFeedback = appConfig.betaFeedbackEnabled || kDebugMode;
+
     return PlaceholderRouteScreen(
       title: 'Settings',
-      description: 'Local data and device settings will live here later.',
+      description: 'Local data, beta support, and device settings.',
       children: [
+        if (showBetaFeedback) ...const [
+          _BetaFeedbackPanel(),
+          SizedBox(height: 12),
+        ],
         if (kDebugMode) ...const [
           _DatabaseHealthPanel(),
           SizedBox(height: 12),
           _FileStoreHealthPanel(),
         ],
       ],
+    );
+  }
+}
+
+class _BetaFeedbackPanel extends StatelessWidget {
+  const _BetaFeedbackPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<TagThemeColors>()!;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.feedback_outlined, color: colors.brandPrimary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Beta feedback',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Report bugs privately. Public GitHub issues only get sanitized summaries.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go(betaFeedbackPath),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Open beta feedback'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

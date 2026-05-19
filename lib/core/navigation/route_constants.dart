@@ -51,6 +51,9 @@ String chatSessionLocation(String chatSessionId) {
 const String settingsRoute = 'settings';
 const String settingsPath = '/settings';
 
+const String betaFeedbackRoute = 'betaFeedback';
+const String betaFeedbackPath = '/settings/beta-feedback';
+
 const String aiQueueDebugRoute = 'aiQueueDebug';
 const String aiQueueDebugPath = '/debug/ai-jobs';
 

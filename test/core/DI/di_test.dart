@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tag/core/index.dart';
 import 'package:tag/features/ai_processing/index.dart';
+import 'package:tag/features/beta_feedback/index.dart';
 import 'package:tag/features/chat/index.dart';
 import 'package:tag/features/model_setup/index.dart';
 import 'package:tag/features/onboarding/index.dart';
@@ -92,6 +93,13 @@ void main() {
     expect(locator.isRegistered<RecordSpaceView>(), isTrue);
     expect(locator.isRegistered<SpacesCubit>(), isTrue);
     expect(locator.isRegistered<SpaceDetailCubit>(), isTrue);
+    expect(locator.isRegistered<SupabaseBetaFeedbackDataSource>(), isTrue);
+    expect(locator.isRegistered<BetaFeedbackAttachmentPicker>(), isTrue);
+    expect(locator.isRegistered<BetaFeedbackDiagnosticsCollector>(), isTrue);
+    expect(locator.isRegistered<BetaFeedbackRepository>(), isTrue);
+    expect(locator.isRegistered<SubmitBetaFeedbackReport>(), isTrue);
+    expect(locator.isRegistered<PickBetaFeedbackScreenshot>(), isTrue);
+    expect(locator.isRegistered<BetaFeedbackCubit>(), isTrue);
     expect(locator.isRegistered<AppCubit>(), isTrue);
     expect(locator.isRegistered<NavigationService>(), isTrue);
   });

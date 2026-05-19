@@ -8,6 +8,7 @@ import 'package:tag/core/navigation/presentation/placeholder_route_screen.dart';
 import 'package:tag/core/navigation/presentation/settings_placeholder_screen.dart';
 import 'package:tag/core/navigation/route_constants.dart';
 import 'package:tag/features/ai_processing/presentation/screens/ai_job_queue_debug_screen.dart';
+import 'package:tag/features/beta_feedback/presentation/screens/beta_feedback_screen.dart';
 import 'package:tag/features/cards/presentation/screens/card_detail_screen.dart';
 import 'package:tag/features/chat/presentation/screens/chat_screen.dart';
 import 'package:tag/features/model_setup/presentation/screens/model_setup_screen.dart';
@@ -26,6 +27,7 @@ const Set<String> _startupRouteAllowlist = {
   spaceDetailPath,
   chatPath,
   settingsPath,
+  betaFeedbackPath,
   aiQueueDebugPath,
   ragSearchDebugPath,
 };
@@ -161,6 +163,16 @@ final GoRouter router = GoRouter(
         return TagPageRoutes.withoutAnimation(
           name: state.name,
           child: const SettingsPlaceholderScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: betaFeedbackPath,
+      name: betaFeedbackRoute,
+      pageBuilder: (context, state) {
+        return TagPageRoutes.withoutAnimation(
+          name: state.name,
+          child: const BetaFeedbackScreen(),
         );
       },
     ),

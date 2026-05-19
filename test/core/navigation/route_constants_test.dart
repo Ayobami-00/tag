@@ -31,6 +31,8 @@ void main() {
     expect(chatSessionLocation('chat_123'), '/chat/chat_123');
     expect(settingsRoute, 'settings');
     expect(settingsPath, '/settings');
+    expect(betaFeedbackRoute, 'betaFeedback');
+    expect(betaFeedbackPath, '/settings/beta-feedback');
     expect(aiQueueDebugRoute, 'aiQueueDebug');
     expect(aiQueueDebugPath, '/debug/ai-jobs');
     expect(ragSearchDebugRoute, 'ragSearchDebug');

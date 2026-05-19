@@ -17,6 +17,7 @@ import 'package:tag/core/platform/device_storage_service.dart';
 import 'package:tag/core/platform/local_text_recognition_service.dart';
 import 'package:tag/core/startup/app_cubit.dart';
 import 'package:tag/features/ai_processing/DI/di.dart';
+import 'package:tag/features/beta_feedback/DI/di.dart';
 import 'package:tag/features/cards/DI/di.dart';
 import 'package:tag/features/ai_processing/domain/services/ai_job_queue_runner.dart';
 import 'package:tag/features/chat/DI/di.dart';
@@ -167,6 +168,7 @@ void setUpAppLocator({
   setUpChatDependencies();
   setUpAiProcessingDependencies();
   setUpTodayDependencies();
+  setUpBetaFeedbackDependencies();
 
   if (!locator.isRegistered<AppCubit>()) {
     locator.registerFactory(

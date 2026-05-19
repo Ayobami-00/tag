@@ -71,6 +71,7 @@ void main() {
       spaceDetailLocation('space_missing'): 'Space',
       chatPath: 'Ask Tag',
       settingsPath: 'Settings',
+      betaFeedbackPath: 'Beta feedback',
       ragSearchDebugPath: 'RAG search',
     };
 
