@@ -46,21 +46,21 @@ void main() {
       final fields = find.byType(TextFormField);
       await tester.enterText(
         fields.at(0),
-        'Live app e2e beta feedback ${DateTime.now().millisecondsSinceEpoch}',
+        'No internal beta debug icon near the Tag title',
       );
       await tester.enterText(
         fields.at(1),
-        'The Flutter integration test submitted from the beta feedback screen.',
+        'The Today header has the Tag title, but there is no small beta feedback/debug icon near it.',
       );
       await tester.enterText(
         fields.at(2),
-        'The private intake should create a sanitized public issue.',
+        'Internal beta builds should expose a small unobtrusive bug/report icon from Today.',
       );
       await tester.ensureVisible(fields.at(3));
       await tester.pumpAndSettle();
       await tester.enterText(
         fields.at(3),
-        'Open beta feedback, complete required fields, consent, submit.',
+        'Open an internal beta/debug build of Tag and look at the Today app bar.',
       );
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();

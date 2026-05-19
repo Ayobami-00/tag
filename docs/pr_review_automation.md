@@ -4,17 +4,16 @@ Tag uses a human-reviewable loop for AI-assisted fixes:
 
 1. A beta issue creates a local Codex task.
 2. Codex fixes the issue on a normal branch such as `feat/...`, `fix/...`, or `chore/...`.
-3. A PR opens with validation evidence and a Tag demo proof marker.
+3. A PR opens with concise validation evidence.
 4. Greptile reviews the PR.
-5. The PR acceptance gate blocks merge until:
-   - `flutter analyze` / `flutter test` CI is green.
-   - the latest Greptile score is `5/5`.
-   - a current-head Tag demo proof marker is attached.
-   - no human reviewer has an unresolved blocker such as `/codex not fixed` or “not fixed”.
+5. Codex keeps updating the same branch until Greptile reports `5/5`.
+6. Demo proof is stored privately in Supabase Storage for user-visible or behavior-critical fixes.
+7. The user reviews the PR and decides when to merge.
 
 Greptile must be installed through the Greptile dashboard and enabled for this
 repository. The repository keeps `greptile.json` with `triggerOnUpdates: true`
-so every Codex push asks Greptile for a fresh pass.
+so every Codex push asks Greptile for a fresh pass. `statusCheck: true` asks
+Greptile to publish its own PR status check when supported by the installation.
 
 After Greptile is installed, protect `main` with:
 
@@ -22,8 +21,8 @@ After Greptile is installed, protect `main` with:
 node scripts/configure_branch_protection.mjs main
 ```
 
-This requires the existing Flutter CI check plus `Tag PR acceptance gate`.
-The gate itself verifies Greptile `5/5`, demo proof, and human blockers.
+This requires the existing Flutter CI check only. Tag no longer has a custom
+PR acceptance-gate workflow.
 
 ## Demo Proof
 
@@ -43,28 +42,6 @@ node scripts/demo_proof_manifest.mjs \
   --command-log artifacts/demo_proofs/pr-12-attempt-1/command_<timestamp>.log
 ```
 
-Paste the generated `demo-proof-comment.md` into the PR. The gate verifies that
-the marker has `status: "pass"` and `head_sha` equal to the current PR head.
-
-## Human Feedback
-
-Use these comments to drive another Codex pass:
-
-```text
-/codex not fixed
-```
-
-or:
-
-```text
-not fixed: <what still fails>
-```
-
-When the fix is confirmed, resolve the blocker with:
-
-```text
-/codex fixed
-```
-
-The gate treats unresolved human blockers as merge blockers even if CI and
-Greptile are green.
+The manifest script uploads the video, command log, and JSON manifest to the
+private `demo-proofs` Supabase Storage bucket and records metadata in
+`public.demo_proofs`. Demo proof is not posted as a public PR comment.

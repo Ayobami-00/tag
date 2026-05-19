@@ -5,7 +5,7 @@ const repo = process.env.GITHUB_REPOSITORY || gitHubRepoFromRemote();
 const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ghToken();
 const branch = process.argv[2] || "main";
 const contexts = (process.env.REQUIRED_STATUS_CONTEXTS ||
-  "Flutter analyze and test,Tag PR acceptance gate")
+  "Flutter analyze and test")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);

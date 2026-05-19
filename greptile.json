@@ -1,3 +1,4 @@
 {
-  "triggerOnUpdates": true
+  "triggerOnUpdates": true,
+  "statusCheck": true
 }
