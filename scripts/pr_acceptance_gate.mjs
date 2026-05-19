@@ -126,16 +126,28 @@ function requiredCheckResult(checkRuns, names) {
     }
   }
 
+  const latestOptionalChecks = new Map();
   for (const check of checkRuns) {
     if (check.name === gateCheckName) continue;
     if (/greptile/i.test(check.name)) continue;
     if (names.includes(check.name)) continue;
+    const prior = latestOptionalChecks.get(check.name);
+    if (!prior || checkSortTime(check) > checkSortTime(prior)) {
+      latestOptionalChecks.set(check.name, check);
+    }
+  }
+
+  for (const check of latestOptionalChecks.values()) {
     if (check.status === "completed" && ["failure", "timed_out", "cancelled"].includes(check.conclusion)) {
       failures.push(`Check ${check.name} concluded ${check.conclusion}.`);
     }
   }
 
   return { ok: failures.length === 0, failures, summary };
+}
+
+function checkSortTime(check) {
+  return new Date(check.started_at || check.created_at || check.completed_at || 0).getTime();
 }
 
 function latestDemoProof(pr, comments) {

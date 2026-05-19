@@ -35,7 +35,7 @@ console.log(`Demo proof comment: ${commentPath}`);
 
 function commentFor(proof) {
   return [
-    "Tag demo proof: pass",
+    `Tag demo proof: ${proof.status}`,
     "",
     `PR: #${proof.pr}`,
     `Attempt: ${proof.attempt}`,
