@@ -75,11 +75,13 @@ async function uploadProof(proof, { bucket, video, commandLog, jsonPath }) {
     contentType: "text/plain; charset=utf-8",
   });
 
+  const manifestPath = `${prefix}/demo-proof.json`;
+  proof.manifest_path = manifestPath;
   const manifestBody = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
   writeFileSync(jsonPath, manifestBody);
-  proof.manifest_path = await uploadObject({
+  await uploadObject({
     bucket,
-    path: `${prefix}/demo-proof.json`,
+    path: manifestPath,
     body: manifestBody,
     contentType: "application/json; charset=utf-8",
   });
