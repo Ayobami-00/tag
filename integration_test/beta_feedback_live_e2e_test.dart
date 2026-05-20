@@ -46,21 +46,21 @@ void main() {
       final fields = find.byType(TextFormField);
       await tester.enterText(
         fields.at(0),
-        'No internal beta debug icon near the Tag title',
+        'Local runner issue creation queue smoke test ${DateTime.now().millisecondsSinceEpoch}',
       );
       await tester.enterText(
         fields.at(1),
-        'The Today header has the Tag title, but there is no small beta feedback/debug icon near it.',
+        'The live app test submitted feedback that should stay private until the local runner creates a sanitized issue.',
       );
       await tester.enterText(
         fields.at(2),
-        'Internal beta builds should expose a small unobtrusive bug/report icon from Today.',
+        'The report should be stored privately and queued for the local runner.',
       );
       await tester.ensureVisible(fields.at(3));
       await tester.pumpAndSettle();
       await tester.enterText(
         fields.at(3),
-        'Open an internal beta/debug build of Tag and look at the Today app bar.',
+        'Open beta feedback, complete required fields, consent, submit, then run the local Codex runner.',
       );
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
@@ -88,7 +88,12 @@ void main() {
       );
 
       expect(find.text('Report received privately'), findsOneWidget);
-      expect(find.textContaining('Public issue:'), findsOneWidget);
+      expect(
+        find.text(
+          'A local runner will create the sanitized GitHub issue from this private report.',
+        ),
+        findsOneWidget,
+      );
     },
     skip: !runLive || endpoint.isEmpty || anonKey.isEmpty,
   );

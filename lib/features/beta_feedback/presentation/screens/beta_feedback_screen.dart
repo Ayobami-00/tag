@@ -545,6 +545,14 @@ class _SuccessPanel extends StatelessWidget {
                 color: colors.goalActiveText,
               ),
             ),
+          ] else ...[
+            const SizedBox(height: TagSpacing.s1),
+            Text(
+              'A local runner will create the sanitized GitHub issue from this private report.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.goalActiveText,
+              ),
+            ),
           ],
         ],
       ),
