@@ -22,6 +22,7 @@ class PlaceholderRouteScreen extends StatelessWidget {
     _RouteLink('Today', todayPath),
     _RouteLink('Chat', chatPath),
     _RouteLink('Settings', settingsPath),
+    _RouteLink('Beta feedback', betaFeedbackPath),
   ];
 
   @override

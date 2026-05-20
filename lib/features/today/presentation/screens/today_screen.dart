@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tag/core/DI/di.dart';
+import 'package:tag/core/config/app_config.dart';
 import 'package:tag/core/navigation/route_constants.dart';
 import 'package:tag/core/presentation/top_signal_banner.dart';
 import 'package:tag/core/startup/app_cubit.dart';
@@ -49,6 +50,8 @@ class _TodayView extends StatelessWidget {
     final localModelPreparationProgress = context.select(
       (AppCubit cubit) => cubit.state.localModelPreparationProgress,
     );
+    final showBetaFeedbackAction =
+        kDebugMode || locator<AppConfig>().betaFeedbackEnabled;
 
     return BlocListener<SourceIngestionCubit, SourceIngestionState>(
       listenWhen: (previous, current) =>
@@ -73,6 +76,12 @@ class _TodayView extends StatelessWidget {
         appBar: AppBar(
           title: const Text(AppConstants.appName),
           actions: [
+            if (showBetaFeedbackAction)
+              IconButton(
+                onPressed: () => context.push(betaFeedbackPath),
+                tooltip: 'Beta feedback',
+                icon: const Icon(Icons.bug_report_outlined),
+              ),
             if (_showTodayDebugActions) ...[
               IconButton(
                 onPressed: () => context.go(ragSearchDebugPath),
