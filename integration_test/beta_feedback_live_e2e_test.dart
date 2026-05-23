@@ -50,7 +50,7 @@ void main() {
       );
       await tester.enterText(
         fields.at(1),
-        'The live app test submitted feedback that should stay private until the local runner creates a sanitized issue.',
+        'The live app test submitted feedback that should stay in the private beta queue.',
       );
       await tester.enterText(
         fields.at(2),
@@ -89,9 +89,7 @@ void main() {
 
       expect(find.text('Report received privately'), findsOneWidget);
       expect(
-        find.text(
-          'A local runner will create the sanitized GitHub issue from this private report.',
-        ),
+        find.text('The Tag team will triage it from the private beta queue.'),
         findsOneWidget,
       );
     },

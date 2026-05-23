@@ -63,7 +63,7 @@ class _BetaFeedbackPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Report bugs privately. Public GitHub issues only get sanitized summaries.',
+                    'Report bugs privately for the Tag beta team to review.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.35,

@@ -189,7 +189,7 @@ class _BetaFeedbackViewState extends State<_BetaFeedbackView> {
                 ),
                 const SizedBox(height: TagSpacing.s2),
                 Text(
-                  'Public GitHub issues get sanitized text only. Screenshots and diagnostics stay in private beta storage.',
+                  'Reports go to the Tag team for private beta review. Screenshots and diagnostics stay in private beta storage.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.textTertiary,
                   ),
@@ -246,7 +246,7 @@ class _IntroPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: TagSpacing.s2),
                   Text(
-                    'Tell the Tag team what broke. Private screenshots are never posted to public GitHub issues.',
+                    'Tell the Tag team what broke. Private screenshots and diagnostics are only used for beta review.',
                     style: theme.textTheme.bodyMedium,
                   ),
                   if (!isConfigured || !isAvailable) ...[
@@ -537,23 +537,13 @@ class _SuccessPanel extends StatelessWidget {
               color: colors.goalActiveText,
             ),
           ),
-          if (result.publicIssueUrl != null) ...[
-            const SizedBox(height: TagSpacing.s1),
-            SelectableText(
-              'Public issue: ${result.publicIssueUrl}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.goalActiveText,
-              ),
+          const SizedBox(height: TagSpacing.s1),
+          Text(
+            'The Tag team will triage it from the private beta queue.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.goalActiveText,
             ),
-          ] else ...[
-            const SizedBox(height: TagSpacing.s1),
-            Text(
-              'A local runner will create the sanitized GitHub issue from this private report.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.goalActiveText,
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
