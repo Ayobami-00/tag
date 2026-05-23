@@ -199,8 +199,16 @@ class _TodayView extends StatelessWidget {
           _DismissibleTodayCard(
             card: card,
             index: index,
-            onOpenDetails: (selectedCard) =>
-                context.push(cardDetailLocation(selectedCard.id)),
+            onOpenDetails: (selectedCard) {
+              if (selectedCard.isProcessingPlaceholder) {
+                context.push(
+                  sourcePreviewLocation(selectedCard.sourceIds.first),
+                );
+                return;
+              }
+
+              context.push(cardDetailLocation(selectedCard.id));
+            },
             onActionSelected: (selectedCard, action) =>
                 _handleCardAction(context, selectedCard, action),
           ),
@@ -526,6 +534,7 @@ class _TodayView extends StatelessWidget {
   IconData _filterIcon(TodayCardFilter filter) {
     return switch (filter) {
       TodayCardFilter.all => Icons.layers_outlined,
+      TodayCardFilter.processing => Icons.hourglass_empty_rounded,
       TodayCardFilter.urgent => Icons.alarm_rounded,
       TodayCardFilter.goal => Icons.flag_outlined,
       TodayCardFilter.suggestion => Icons.auto_awesome_rounded,
@@ -538,6 +547,7 @@ class _TodayView extends StatelessWidget {
   Color _filterColor(TagThemeColors colors, TodayCardFilter filter) {
     return switch (filter) {
       TodayCardFilter.all => colors.brandSoftText,
+      TodayCardFilter.processing => colors.brandSoftText,
       TodayCardFilter.urgent => colors.urgentText,
       TodayCardFilter.goal => colors.goalActiveText,
       TodayCardFilter.suggestion => colors.suggestionText,
@@ -550,6 +560,7 @@ class _TodayView extends StatelessWidget {
   Color _filterBackground(TagThemeColors colors, TodayCardFilter filter) {
     return switch (filter) {
       TodayCardFilter.all => colors.brandSoft,
+      TodayCardFilter.processing => colors.brandSoft,
       TodayCardFilter.urgent => colors.urgentSoft,
       TodayCardFilter.goal => colors.goalActiveSoft,
       TodayCardFilter.suggestion => colors.suggestionSoft,
@@ -577,6 +588,19 @@ class _DismissibleTodayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TagThemeColors>()!;
+    final cardEntry = _AnimatedTodayCardEntry(
+      index: index,
+      child: TagCardListItem(
+        key: PageStorageKey<String>('today_card_item_${card.id}'),
+        card: card,
+        onOpenDetails: onOpenDetails,
+        onActionSelected: onActionSelected,
+      ),
+    );
+
+    if (card.isProcessingPlaceholder) {
+      return cardEntry;
+    }
 
     return Dismissible(
       key: ValueKey('today_card_${card.id}'),
@@ -584,15 +608,7 @@ class _DismissibleTodayCard extends StatelessWidget {
       background: const SizedBox.shrink(),
       secondaryBackground: _DeleteCardBackground(colors: colors),
       confirmDismiss: (_) => _deleteCard(context),
-      child: _AnimatedTodayCardEntry(
-        index: index,
-        child: TagCardListItem(
-          key: PageStorageKey<String>('today_card_item_${card.id}'),
-          card: card,
-          onOpenDetails: onOpenDetails,
-          onActionSelected: onActionSelected,
-        ),
-      ),
+      child: cardEntry,
     );
   }
 

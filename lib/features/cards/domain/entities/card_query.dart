@@ -14,6 +14,7 @@ enum TodayViewMode {
 
 enum TodayCardFilter {
   all('All'),
+  processing('Processing'),
   urgent('Urgent'),
   goal('Goal'),
   suggestion('Suggestion'),

@@ -225,6 +225,13 @@ class _TagCardListItemState extends State<TagCardListItem> {
   }
 
   _CardVisualStyle _styleFor(TagThemeColors colors) {
+    if (card.status == TagCardStatus.processing) {
+      return _CardVisualStyle(
+        accent: colors.brandPrimary,
+        chipBackground: colors.brandSoft,
+        chipText: colors.brandSoftText,
+      );
+    }
     if (card.status == TagCardStatus.completed) {
       return _CardVisualStyle(
         accent: colors.completed,
@@ -276,6 +283,9 @@ class _TagCardListItemState extends State<TagCardListItem> {
   }
 
   IconData _timeIcon() {
+    if (card.status == TagCardStatus.processing) {
+      return Icons.hourglass_empty_rounded;
+    }
     if (card.status == TagCardStatus.snoozed) {
       return Icons.schedule_rounded;
     }

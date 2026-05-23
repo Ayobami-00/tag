@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -13,6 +14,7 @@ import 'package:tag/features/cards/domain/repositories/space_repository.dart';
 import 'package:tag/features/cards/domain/use_cases/card_title_normalizer.dart';
 import 'package:tag/features/cards/domain/use_cases/card_policy.dart';
 import 'package:tag/features/cards/domain/use_cases/create_card_from_proposal.dart';
+import 'package:tag/features/source_ingestion/domain/entities/source_item_entity.dart';
 import 'package:uuid/uuid.dart';
 
 class CardRepositoryImpl implements CardRepository {
@@ -27,6 +29,14 @@ class CardRepositoryImpl implements CardRepository {
        _spaceRepository = spaceRepository,
        _now = now ?? DateTime.now,
        _uuid = uuid ?? const Uuid();
+
+  static const List<String> _visibleSourceProcessingStates = [
+    'saved',
+    'extracting',
+    'extracted',
+    'classifying',
+    'proposed',
+  ];
 
   final database_models.TagDatabase _database;
   final CardLocalDataSource _localDataSource;
@@ -245,7 +255,8 @@ class CardRepositoryImpl implements CardRepository {
   @override
   Future<List<TagCardEntity>> getCards(CardListQuery query) async {
     final cards = await _loadCards();
-    return _applyQuery(cards, query);
+    final processingPlaceholders = await _loadProcessingSourcePlaceholders();
+    return _applyQuery([...cards, ...processingPlaceholders], query);
   }
 
   @override
@@ -338,6 +349,43 @@ class CardRepositoryImpl implements CardRepository {
 
   @override
   Stream<List<TagCardEntity>> watchCards(CardListQuery query) {
+    late final StreamSubscription<List<TagCardEntity>> cardsSubscription;
+    late final StreamSubscription<List<TagCardEntity>> processingSubscription;
+    var storedCards = <TagCardEntity>[];
+    var processingPlaceholders = <TagCardEntity>[];
+
+    final controller = StreamController<List<TagCardEntity>>();
+
+    void emitCurrent() {
+      if (!controller.isClosed) {
+        controller.add(
+          _applyQuery([...storedCards, ...processingPlaceholders], query),
+        );
+      }
+    }
+
+    controller.onListen = () {
+      cardsSubscription = _watchStoredCards().listen((cards) {
+        storedCards = cards;
+        emitCurrent();
+      }, onError: controller.addError);
+      processingSubscription = _watchProcessingSourcePlaceholders().listen((
+        cards,
+      ) {
+        processingPlaceholders = cards;
+        emitCurrent();
+      }, onError: controller.addError);
+    };
+
+    controller.onCancel = () {
+      unawaited(cardsSubscription.cancel());
+      unawaited(processingSubscription.cancel());
+    };
+
+    return controller.stream;
+  }
+
+  Stream<List<TagCardEntity>> _watchStoredCards() {
     final joined =
         _database.select(_database.tagCards).join([
           innerJoin(
@@ -369,7 +417,7 @@ class CardRepositoryImpl implements CardRepository {
         );
       }
 
-      return _applyQuery(cards, query);
+      return cards;
     });
   }
 
@@ -431,6 +479,191 @@ class CardRepositoryImpl implements CardRepository {
     }
 
     return cards;
+  }
+
+  Future<List<TagCardEntity>> _loadProcessingSourcePlaceholders() async {
+    final rows = await _processingSourceRowsQuery().get();
+    return _mapProcessingSourceRows(rows);
+  }
+
+  Stream<List<TagCardEntity>> _watchProcessingSourcePlaceholders() {
+    return _processingSourceRowsQuery().watch().map(_mapProcessingSourceRows);
+  }
+
+  Selectable<TypedResult> _processingSourceRowsQuery() {
+    final sourceItems = _database.sourceItems;
+    final cardSources = _database.cardSources;
+
+    return _database.select(sourceItems).join([
+      leftOuterJoin(
+        cardSources,
+        cardSources.sourceId.equalsExp(sourceItems.id),
+      ),
+    ])..where(
+      sourceItems.deletedAt.isNull() &
+          sourceItems.processingState.isIn(_visibleSourceProcessingStates) &
+          cardSources.sourceId.isNull(),
+    );
+  }
+
+  List<TagCardEntity> _mapProcessingSourceRows(List<TypedResult> rows) {
+    final sourceById = <String, database_models.SourceItem>{};
+    for (final row in rows) {
+      final source = row.readTable(_database.sourceItems);
+      sourceById[source.id] = source;
+    }
+
+    return sourceById.values
+        .map(_mapProcessingSourcePlaceholder)
+        .toList(growable: false);
+  }
+
+  TagCardEntity _mapProcessingSourcePlaceholder(
+    database_models.SourceItem source,
+  ) {
+    final sourceType = SourceItemType.fromStorageValue(source.type);
+    final processingState = SourceProcessingState.fromStorageValue(
+      source.processingState,
+    );
+    final sourceSummary = _processingSourceSummary(source, sourceType);
+
+    return TagCardEntity(
+      id: 'processing_source_${source.id}',
+      cardType: TagCardType.suggestion,
+      status: TagCardStatus.processing,
+      title: _processingPlaceholderTitle(source, sourceType),
+      reason: _processingPlaceholderReason(processingState, sourceType),
+      space: SpaceEntity(
+        id: 'space_processing',
+        name: 'Processing',
+        normalizedName: 'processing',
+        type: SpaceType.fallback,
+        description: 'Local sources currently being processed.',
+        createdBy: 'system',
+        confidence: null,
+        createdAt: source.createdAt,
+        updatedAt: source.updatedAt,
+      ),
+      nextActiveDeadline: null,
+      deadlineTimezone: null,
+      snoozedUntil: null,
+      notificationEnabled: false,
+      actions: const [],
+      confidence: null,
+      sourceSummary: sourceSummary,
+      evidenceSummary: 'Linked source is still being processed locally.',
+      sourceIds: [source.id],
+      createdBy: 'system',
+      parentGoalPlanId: null,
+      modelSlug: null,
+      modelOutputJson: null,
+      metadataJson: jsonEncode({
+        'created_from': 'processing_source_placeholder',
+        'source_processing_state': processingState.storageValue,
+        'source_type': sourceType.storageValue,
+      }),
+      createdAt: source.createdAt,
+      updatedAt: source.updatedAt,
+      completedAt: null,
+      cancelledAt: null,
+      dismissedAt: null,
+      archivedAt: null,
+    );
+  }
+
+  String _processingPlaceholderTitle(
+    database_models.SourceItem source,
+    SourceItemType sourceType,
+  ) {
+    final sourceHint = _sourceHint(source);
+    if (sourceHint != null) {
+      return 'Processing $sourceHint';
+    }
+
+    return switch (sourceType) {
+      SourceItemType.screenshot => 'Processing screenshot',
+      SourceItemType.image => 'Processing image',
+      SourceItemType.text || SourceItemType.chat => 'Processing text',
+      SourceItemType.link => 'Processing link',
+      SourceItemType.savedPost => 'Processing saved post',
+      SourceItemType.emailText => 'Processing email text',
+      SourceItemType.manual => 'Processing source',
+    };
+  }
+
+  String _processingPlaceholderReason(
+    SourceProcessingState processingState,
+    SourceItemType sourceType,
+  ) {
+    final sourceLabel = _sourceItemTypeLabel(sourceType).toLowerCase();
+    return switch (processingState) {
+      SourceProcessingState.saved =>
+        'Waiting for local processing to start for this $sourceLabel.',
+      SourceProcessingState.extracting =>
+        'Reading this $sourceLabel locally before Tag creates a card.',
+      SourceProcessingState.extracted ||
+      SourceProcessingState.classifying ||
+      SourceProcessingState.proposed =>
+        'Building a local Tag Card from this $sourceLabel.',
+      SourceProcessingState.completed =>
+        'Local processing finished for this $sourceLabel.',
+      SourceProcessingState.failed =>
+        'Local processing could not finish for this $sourceLabel.',
+    };
+  }
+
+  String _sourceDisplaySummary(database_models.SourceItem source) {
+    final summary = source.sourceSummary?.trim();
+    if (summary != null && summary.isNotEmpty) {
+      return summary;
+    }
+
+    final sourceType = SourceItemType.fromStorageValue(source.type);
+    return _sourceItemTypeLabel(sourceType);
+  }
+
+  String _processingSourceSummary(
+    database_models.SourceItem source,
+    SourceItemType sourceType,
+  ) {
+    final sourceHint = _sourceHint(source);
+    if (sourceHint != null) {
+      return sourceHint;
+    }
+
+    return _sourceDisplaySummary(source);
+  }
+
+  String? _sourceHint(database_models.SourceItem source) {
+    final summary = source.sourceSummary?.trim();
+    if (summary == null || summary.isEmpty) {
+      return null;
+    }
+
+    const manualImagePrefix = 'Manual image - ';
+    if (summary.startsWith(manualImagePrefix)) {
+      final fileName = summary.substring(manualImagePrefix.length).trim();
+      return fileName.isEmpty ? null : fileName;
+    }
+
+    if (summary == 'Manual image' || summary == 'Manual text') {
+      return null;
+    }
+
+    return summary;
+  }
+
+  String _sourceItemTypeLabel(SourceItemType sourceType) {
+    return switch (sourceType) {
+      SourceItemType.screenshot => 'Screenshot',
+      SourceItemType.image => 'Image',
+      SourceItemType.link => 'Link',
+      SourceItemType.text => 'Text',
+      SourceItemType.chat => 'Chat',
+      SourceItemType.savedPost => 'Saved post',
+      SourceItemType.emailText => 'Email text',
+      SourceItemType.manual => 'Source',
+    };
   }
 
   Future<TagCardEntity> _mapCard(
@@ -559,9 +792,16 @@ class CardRepositoryImpl implements CardRepository {
   bool _matchesFilter(TagCardEntity card, TodayCardFilter filter) {
     return switch (filter) {
       TodayCardFilter.all => card.status != TagCardStatus.dismissed,
-      TodayCardFilter.urgent => card.cardType == TagCardType.urgent,
-      TodayCardFilter.goal => card.cardType == TagCardType.goal,
-      TodayCardFilter.suggestion => card.cardType == TagCardType.suggestion,
+      TodayCardFilter.processing => card.status == TagCardStatus.processing,
+      TodayCardFilter.urgent =>
+        card.cardType == TagCardType.urgent &&
+            card.status != TagCardStatus.processing,
+      TodayCardFilter.goal =>
+        card.cardType == TagCardType.goal &&
+            card.status != TagCardStatus.processing,
+      TodayCardFilter.suggestion =>
+        card.cardType == TagCardType.suggestion &&
+            card.status != TagCardStatus.processing,
       TodayCardFilter.completed => card.status == TagCardStatus.completed,
       TodayCardFilter.snoozed => card.status == TagCardStatus.snoozed,
       TodayCardFilter.cancelled => card.status == TagCardStatus.cancelled,
@@ -574,6 +814,9 @@ class CardRepositoryImpl implements CardRepository {
     }
     if (query.viewMode == TodayViewMode.all) {
       return true;
+    }
+    if (card.status == TagCardStatus.processing) {
+      return query.viewMode == TodayViewMode.today;
     }
 
     final bounds = _dayBounds(query.now);
@@ -613,6 +856,11 @@ class CardRepositoryImpl implements CardRepository {
       return leftTime.compareTo(rightTime);
     }
 
+    if (left.status == TagCardStatus.processing &&
+        right.status == TagCardStatus.processing) {
+      return right.createdAt.compareTo(left.createdAt);
+    }
+
     final createdCompare = left.createdAt.compareTo(right.createdAt);
     if (createdCompare != 0) {
       return createdCompare;
@@ -622,6 +870,9 @@ class CardRepositoryImpl implements CardRepository {
   }
 
   int _sortBucket(TagCardEntity card, DateTime now) {
+    if (card.status == TagCardStatus.processing) {
+      return 4;
+    }
     if (card.status == TagCardStatus.completed) {
       return 8;
     }

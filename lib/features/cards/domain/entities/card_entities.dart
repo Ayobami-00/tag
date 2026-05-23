@@ -20,6 +20,7 @@ enum TagCardType {
 
 enum TagCardStatus {
   active('active', 'Active'),
+  processing('processing', 'Processing'),
   completed('completed', 'Completed'),
   snoozed('snoozed', 'Snoozed'),
   cancelled('cancelled', 'Cancelled'),
@@ -178,6 +179,11 @@ class TagCardEntity extends Equatable {
   int? get nextAttentionTime => snoozedUntil ?? nextActiveDeadline;
 
   bool get isActive => status == TagCardStatus.active;
+
+  bool get isProcessingPlaceholder =>
+      status == TagCardStatus.processing &&
+      id.startsWith('processing_source_') &&
+      sourceIds.isNotEmpty;
 
   bool get isTerminal =>
       status == TagCardStatus.completed ||
