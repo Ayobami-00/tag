@@ -442,6 +442,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Urgent'), findsOneWidget);
+    expect(find.text('Processing'), findsOneWidget);
     expect(find.text('Goal'), findsOneWidget);
     expect(find.text('Suggestion'), findsOneWidget);
     expect(find.text('Completed'), findsOneWidget);
@@ -591,8 +592,6 @@ void main() {
         .element(find.byType(Scaffold))
         .read<SourceIngestionCubit>();
     await _waitForImageImport(tester, sourceCubit);
-    // Process the queue with the first Today watcher closed; the screen is
-    // mounted again below to verify the card renders from local storage.
     await _disposeWidgetTree(tester);
     await _processQueuedAiJob(tester);
 

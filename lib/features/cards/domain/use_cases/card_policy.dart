@@ -24,6 +24,9 @@ abstract final class CardPolicy {
   }
 
   static List<TagCardAction> availableActionsFor(TagCardEntity card) {
+    if (card.status == TagCardStatus.processing) {
+      return const [];
+    }
     if (card.isTerminal) {
       return const [];
     }

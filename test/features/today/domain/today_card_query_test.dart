@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -167,6 +169,127 @@ void main() {
     ]);
   });
 
+  test(
+    'processing image sources appear in All and Processing filters',
+    () async {
+      await _insertProcessingImageSource(
+        database,
+        id: 'src_processing',
+        summary: 'Manual image - receipt.png',
+      );
+
+      final allCards = await repository.getCards(
+        CardListQuery(
+          viewMode: TodayViewMode.today,
+          filter: TodayCardFilter.all,
+          now: _fixedNow(),
+        ),
+      );
+      final processingCards = await repository.getCards(
+        CardListQuery(
+          viewMode: TodayViewMode.today,
+          filter: TodayCardFilter.processing,
+          now: _fixedNow(),
+        ),
+      );
+      final suggestionCards = await repository.getCards(
+        CardListQuery(
+          viewMode: TodayViewMode.today,
+          filter: TodayCardFilter.suggestion,
+          now: _fixedNow(),
+        ),
+      );
+
+      expect(allCards.map((card) => card.title), ['Processing receipt.png']);
+      expect(processingCards, hasLength(1));
+      expect(processingCards.single.isProcessingPlaceholder, isTrue);
+      expect(processingCards.single.sourceIds, ['src_processing']);
+      expect(processingCards.single.sourceSummary, 'receipt.png');
+      expect(suggestionCards, isEmpty);
+    },
+  );
+
+  test('watchCards emits when a processing image source is saved', () async {
+    final processingCardCompleter = Completer<TagCardEntity>();
+    final subscription = repository
+        .watchCards(
+          CardListQuery(
+            viewMode: TodayViewMode.today,
+            filter: TodayCardFilter.processing,
+            now: _fixedNow(),
+          ),
+        )
+        .listen((cards) {
+          for (final card in cards) {
+            if (card.isProcessingPlaceholder &&
+                card.sourceIds.contains('src_processing')) {
+              if (!processingCardCompleter.isCompleted) {
+                processingCardCompleter.complete(card);
+              }
+              return;
+            }
+          }
+        });
+    addTearDown(subscription.cancel);
+
+    await _insertProcessingImageSource(
+      database,
+      id: 'src_processing',
+      summary: 'Manual image - receipt.png',
+    );
+
+    final processingCard = await processingCardCompleter.future.timeout(
+      const Duration(seconds: 2),
+    );
+
+    expect(processingCard.title, 'Processing receipt.png');
+    expect(processingCard.sourceIds, ['src_processing']);
+  });
+
+  test(
+    'processing placeholders disappear once a card links the source',
+    () async {
+      await _insertProcessingImageSource(
+        database,
+        id: 'src_processing',
+        summary: 'Manual image - receipt.png',
+      );
+
+      await repository.createFromProposal(
+        proposal: CardProposal.fromJson({
+          'card_type': 'urgent',
+          'title': 'Submit receipt',
+          'reason': 'Detected from a receipt screenshot.',
+          'space_name': 'Expenses',
+          'next_active_deadline': _fixedNow()
+              .add(const Duration(hours: 2))
+              .toIso8601String(),
+          'source_ids': ['src_processing'],
+          'actions': ['complete', 'snooze', 'cancel'],
+          'confidence': 0.91,
+        }),
+      );
+
+      final processingCards = await repository.getCards(
+        CardListQuery(
+          viewMode: TodayViewMode.today,
+          filter: TodayCardFilter.processing,
+          now: _fixedNow(),
+        ),
+      );
+      final allCards = await repository.getCards(
+        CardListQuery(
+          viewMode: TodayViewMode.today,
+          filter: TodayCardFilter.all,
+          now: _fixedNow(),
+        ),
+      );
+
+      expect(processingCards, isEmpty);
+      expect(allCards.map((card) => card.title), ['Submit receipt']);
+    },
+  );
+
   test('Today view shows overdue, today, and suggestion cards only', () async {
     await _createCard(
       repository,
@@ -255,6 +378,28 @@ Future<void> _insertSource(TagDatabase database, {required String id}) async {
           contentType: const Value('message'),
           rawText: Value('Evidence for $id'),
           extractedText: Value('Evidence for $id'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+}
+
+Future<void> _insertProcessingImageSource(
+  TagDatabase database, {
+  required String id,
+  required String summary,
+}) async {
+  final now = _fixedNow().millisecondsSinceEpoch;
+
+  await database
+      .into(database.sourceItems)
+      .insert(
+        SourceItemsCompanion.insert(
+          id: id,
+          type: 'image',
+          sourceSummary: Value(summary),
+          contentType: const Value('unknown'),
+          processingState: const Value('saved'),
           createdAt: now,
           updatedAt: now,
         ),
