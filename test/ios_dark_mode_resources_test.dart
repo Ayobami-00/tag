@@ -37,6 +37,10 @@ void main() {
         final storyboard = File(path).readAsStringSync();
 
         expect(storyboard, contains('name="LaunchBackground"'));
+        expect(
+          storyboard,
+          isNot(contains('<namedColor name="LaunchBackground"')),
+        );
         expect(storyboard, isNot(contains('red="1" green="1" blue="1"')));
         expect(storyboard, isNot(contains('white="1" alpha="1"')));
       }
