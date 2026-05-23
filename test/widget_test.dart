@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:tag/app.dart';
 import 'package:tag/core/index.dart';
+import 'package:tag/utils/theme/tag_theme.dart';
 import 'test_support/source_ingestion_test_support.dart';
 
 void main() {
@@ -45,6 +46,27 @@ void main() {
     expect(find.text('Tag'), findsOneWidget);
     expect(find.text('Welcome to Tag'), findsOneWidget);
     expect(find.text('Start'), findsOneWidget);
+    expect(find.byType(BottomNavigationBar), findsNothing);
+    expect(find.text('Login'), findsNothing);
+  });
+
+  testWidgets('follows the system dark appearance on first run', (
+    tester,
+  ) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+
+    await tester.pumpWidget(const App());
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.text('Welcome to Tag'));
+    final theme = Theme.of(context);
+    final colors = theme.extension<TagThemeColors>()!;
+
+    expect(theme.brightness, Brightness.dark);
+    expect(theme.scaffoldBackgroundColor, colors.backgroundDefault);
+    expect(colors.backgroundDefault, const Color(0xFF0F1115));
+    expect(colors.surfaceCard, const Color(0xFF171A21));
     expect(find.byType(BottomNavigationBar), findsNothing);
     expect(find.text('Login'), findsNothing);
   });
