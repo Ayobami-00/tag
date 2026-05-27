@@ -2,25 +2,31 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:tag/core/use_cases/use_cases.dart';
 import 'package:tag/features/source_ingestion/domain/entities/source_item_entity.dart';
+import 'package:tag/features/source_ingestion/domain/services/manual_source_picker.dart';
 import 'package:tag/features/source_ingestion/domain/use_cases/create_text_source.dart';
 import 'package:tag/features/source_ingestion/domain/use_cases/import_image_source.dart';
 import 'package:tag/features/source_ingestion/domain/use_cases/watch_recent_sources.dart';
 
 part 'source_ingestion_state.dart';
 
+typedef ManualSourceDescriptionRequester =
+    Future<String?> Function(PickedImageSource pickedImage);
+
 class SourceIngestionCubit extends Cubit<SourceIngestionState> {
   SourceIngestionCubit({
     required ImportImageSource importImageSource,
+    required ManualSourcePicker manualSourcePicker,
     required CreateTextSource createTextSource,
     required WatchRecentSources watchRecentSources,
   }) : _importImageSource = importImageSource,
+       _manualSourcePicker = manualSourcePicker,
        _createTextSource = createTextSource,
        _watchRecentSources = watchRecentSources,
        super(const SourceIngestionState());
 
   final ImportImageSource _importImageSource;
+  final ManualSourcePicker _manualSourcePicker;
   final CreateTextSource _createTextSource;
   final WatchRecentSources _watchRecentSources;
   StreamSubscription<List<SourceItemEntity>>? _recentSourcesSubscription;
@@ -50,7 +56,9 @@ class SourceIngestionCubit extends Cubit<SourceIngestionState> {
         );
   }
 
-  Future<void> importImage() async {
+  Future<void> importImage({
+    ManualSourceDescriptionRequester? requestDescription,
+  }) async {
     emit(
       state.copyWith(
         status: SourceIngestionStatus.saving,
@@ -60,7 +68,24 @@ class SourceIngestionCubit extends Cubit<SourceIngestionState> {
     );
 
     try {
-      final source = await _importImageSource(const NoParams());
+      final pickedImage = await _manualSourcePicker.pickImage();
+      if (pickedImage == null) {
+        emit(
+          state.copyWith(
+            status: SourceIngestionStatus.ready,
+            actionMessage: '',
+          ),
+        );
+        return;
+      }
+
+      final sourceDescription = await requestDescription?.call(pickedImage);
+      final source = await _importImageSource(
+        ImportImageSourceParams(
+          pickedImage: pickedImage,
+          sourceDescription: sourceDescription,
+        ),
+      );
       if (source == null) {
         emit(
           state.copyWith(

@@ -137,6 +137,7 @@ void setUpSourceIngestionDependencies() {
     locator.registerFactory(
       () => SourceIngestionCubit(
         importImageSource: locator<ImportImageSource>(),
+        manualSourcePicker: locator<ManualSourcePicker>(),
         createTextSource: locator<CreateTextSource>(),
         watchRecentSources: locator<WatchRecentSources>(),
       ),

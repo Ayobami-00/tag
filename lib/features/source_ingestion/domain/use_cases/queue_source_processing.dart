@@ -8,12 +8,13 @@ import 'package:tag/features/ai_processing/domain/services/ai_job_queue_runner.d
 import 'package:uuid/uuid.dart';
 
 class QueueSourceProcessingParams extends Equatable {
-  const QueueSourceProcessingParams(this.sourceId);
+  const QueueSourceProcessingParams(this.sourceId, {this.sourceDescription});
 
   final String sourceId;
+  final String? sourceDescription;
 
   @override
-  List<Object?> get props => [sourceId];
+  List<Object?> get props => [sourceId, sourceDescription];
 }
 
 typedef AiJobIdFactory = String Function();
@@ -49,6 +50,9 @@ class QueueSourceProcessing with UseCases<void, QueueSourceProcessingParams> {
       return;
     }
 
+    final sourceDescription = _normalizedSourceDescription(
+      params.sourceDescription,
+    );
     await aiJobRepository.createJob(
       CreateAiJobRequest(
         id: _aiJobIdFactory(),
@@ -57,6 +61,8 @@ class QueueSourceProcessing with UseCases<void, QueueSourceProcessingParams> {
         inputJson: jsonEncode({
           'source_id': params.sourceId,
           'pipeline': 'source_ingestion',
+          if (sourceDescription != null)
+            'source_description': sourceDescription,
         }),
       ),
     );
@@ -64,5 +70,14 @@ class QueueSourceProcessing with UseCases<void, QueueSourceProcessingParams> {
       await Future<void>.delayed(_processingKickoffDelay);
     }
     _aiJobQueueRunnerProvider()?.requestProcessing();
+  }
+
+  String? _normalizedSourceDescription(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    return trimmed;
   }
 }

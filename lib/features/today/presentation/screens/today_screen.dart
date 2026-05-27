@@ -12,6 +12,7 @@ import 'package:tag/core/startup/app_cubit.dart';
 import 'package:tag/features/cards/domain/entities/card_entities.dart';
 import 'package:tag/features/cards/domain/entities/card_query.dart';
 import 'package:tag/features/model_setup/domain/repositories/model_setup_repository.dart';
+import 'package:tag/features/source_ingestion/domain/services/manual_source_picker.dart';
 import 'package:tag/features/source_ingestion/presentation/logic/source_ingestion_cubit.dart';
 import 'package:tag/features/spaces/presentation/screens/spaces_overview.dart';
 import 'package:tag/features/today/presentation/logic/today_cubit.dart';
@@ -109,8 +110,7 @@ class _TodayView extends StatelessWidget {
                 return _TodaySpeedDialFab(
                   isSavingImage: sourceState.isSaving,
                   onAskTag: () => context.go(chatPath),
-                  onAttachImage: () =>
-                      context.read<SourceIngestionCubit>().importImage(),
+                  onAttachImage: () => _importImageWithDescription(context),
                 );
               },
             ),
@@ -173,7 +173,7 @@ class _TodayView extends StatelessWidget {
                   else if (todayState.cards.isEmpty)
                     _EmptyTodayCard(
                       onTrySavingSomething: () =>
-                          context.read<SourceIngestionCubit>().importImage(),
+                          _importImageWithDescription(context),
                     )
                   else
                     ..._buildCardItems(context, todayState.cards),
@@ -217,6 +217,32 @@ class _TodayView extends StatelessWidget {
     }
 
     return widgets;
+  }
+
+  Future<void> _importImageWithDescription(BuildContext context) async {
+    await context.read<SourceIngestionCubit>().importImage(
+      requestDescription: (pickedImage) async {
+        if (!context.mounted) {
+          return null;
+        }
+
+        return _showManualImageDescriptionSheet(context, pickedImage);
+      },
+    );
+  }
+
+  Future<String?> _showManualImageDescriptionSheet(
+    BuildContext context,
+    PickedImageSource pickedImage,
+  ) {
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return _ManualImageDescriptionSheet(pickedImage: pickedImage);
+      },
+    );
   }
 
   Future<void> _handleCardAction(
@@ -1091,6 +1117,129 @@ class _SpeedDialIconAction extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ManualImageDescriptionSheet extends StatefulWidget {
+  const _ManualImageDescriptionSheet({required this.pickedImage});
+
+  final PickedImageSource pickedImage;
+
+  @override
+  State<_ManualImageDescriptionSheet> createState() =>
+      _ManualImageDescriptionSheetState();
+}
+
+class _ManualImageDescriptionSheetState
+    extends State<_ManualImageDescriptionSheet> {
+  static const int _descriptionMaxLength = 280;
+
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = Theme.of(context).extension<TagThemeColors>()!;
+    final fileName = _displayName(widget.pickedImage);
+
+    return SafeArea(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            TagSpacing.s5,
+            0,
+            TagSpacing.s5,
+            TagSpacing.s5,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add source description',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: TagSpacing.s1),
+              Row(
+                children: [
+                  Icon(
+                    Icons.image_outlined,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: TagSpacing.s2),
+                  Expanded(
+                    child: Text(
+                      fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: TagSpacing.s4),
+              TextField(
+                key: const ValueKey('manual_image_description_field'),
+                controller: _controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: _descriptionMaxLength,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'What should Tag know about this image?',
+                  alignLabelWithHint: true,
+                ),
+                onSubmitted: (_) => _save(),
+              ),
+              const SizedBox(height: TagSpacing.s3),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(''),
+                    child: const Text('Skip'),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Save source'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _displayName(PickedImageSource pickedImage) {
+    final displayName = pickedImage.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    return 'Selected image';
+  }
+
+  void _save() {
+    Navigator.of(context).pop(_controller.text.trim());
   }
 }
 

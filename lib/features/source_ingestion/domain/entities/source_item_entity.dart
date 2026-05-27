@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 enum SourceItemType {
@@ -118,6 +120,16 @@ class SourceItemEntity extends Equatable {
     };
   }
 
+  String? get sourceDescription {
+    final value = _metadataString('source_description');
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    return trimmed;
+  }
+
   SourceItemEntity copyWith({
     String? id,
     SourceItemType? type,
@@ -193,4 +205,20 @@ class SourceItemEntity extends Equatable {
     createdAt,
     updatedAt,
   ];
+
+  String? _metadataString(String key) {
+    try {
+      final decoded = jsonDecode(metadataJson);
+      if (decoded is Map<String, dynamic>) {
+        return decoded[key]?.toString();
+      }
+      if (decoded is Map) {
+        return decoded[key]?.toString();
+      }
+    } on FormatException {
+      return null;
+    }
+
+    return null;
+  }
 }

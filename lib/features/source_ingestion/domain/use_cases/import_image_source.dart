@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:equatable/equatable.dart';
 import 'package:tag/core/use_cases/use_cases.dart';
 import 'package:tag/features/source_ingestion/domain/entities/source_item_entity.dart';
 import 'package:tag/features/source_ingestion/domain/repositories/source_repository.dart';
@@ -10,7 +11,18 @@ import 'package:tag/features/source_ingestion/domain/use_cases/queue_source_proc
 import 'package:tag/features/source_ingestion/domain/use_cases/source_id_factory.dart';
 import 'package:tag/features/source_ingestion/domain/use_cases/store_source_file.dart';
 
-class ImportImageSource with UseCases<SourceItemEntity?, NoParams> {
+class ImportImageSourceParams extends Equatable {
+  const ImportImageSourceParams({this.pickedImage, this.sourceDescription});
+
+  final PickedImageSource? pickedImage;
+  final String? sourceDescription;
+
+  @override
+  List<Object?> get props => [pickedImage, sourceDescription];
+}
+
+class ImportImageSource
+    with UseCases<SourceItemEntity?, ImportImageSourceParams> {
   const ImportImageSource({
     required ManualSourcePicker manualSourcePicker,
     required StoreSourceFile storeSourceFile,
@@ -30,12 +42,16 @@ class ImportImageSource with UseCases<SourceItemEntity?, NoParams> {
   final SourceIdFactory _sourceIdFactory;
 
   @override
-  Future<SourceItemEntity?> call(NoParams params) async {
-    final pickedImage = await _manualSourcePicker.pickImage();
+  Future<SourceItemEntity?> call(ImportImageSourceParams params) async {
+    final pickedImage =
+        params.pickedImage ?? await _manualSourcePicker.pickImage();
     if (pickedImage == null) {
       return null;
     }
 
+    final sourceDescription = _normalizedSourceDescription(
+      params.sourceDescription,
+    );
     final sourceId = _sourceIdFactory();
     final localFilePath = await _storeSourceFile(
       StoreSourceFileParams.image(
@@ -53,6 +69,8 @@ class ImportImageSource with UseCases<SourceItemEntity?, NoParams> {
         sourceSummary: _summaryForPickedImage(pickedImage),
         metadataJson: jsonEncode({
           'imported_via': 'manual_image',
+          if (sourceDescription != null)
+            'source_description': sourceDescription,
           if (pickedImage.displayName != null)
             'file_name': pickedImage.displayName,
           if (pickedImage.extension != null) 'extension': pickedImage.extension,
@@ -62,14 +80,17 @@ class ImportImageSource with UseCases<SourceItemEntity?, NoParams> {
       ),
     );
 
-    _queueWithoutBlocking(source.id);
+    _queueWithoutBlocking(source.id, sourceDescription: sourceDescription);
     return source;
   }
 
-  void _queueWithoutBlocking(String sourceId) {
+  void _queueWithoutBlocking(String sourceId, {String? sourceDescription}) {
     unawaited(
       _queueSourceProcessing(
-        QueueSourceProcessingParams(sourceId),
+        QueueSourceProcessingParams(
+          sourceId,
+          sourceDescription: sourceDescription,
+        ),
       ).catchError((_) {}),
     );
   }
@@ -81,5 +102,14 @@ class ImportImageSource with UseCases<SourceItemEntity?, NoParams> {
     }
 
     return 'Manual image - $displayName';
+  }
+
+  String? _normalizedSourceDescription(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    return trimmed;
   }
 }
