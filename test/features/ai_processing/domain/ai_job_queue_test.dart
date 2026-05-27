@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -87,6 +87,48 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(runner.requestCount, 1);
   });
+
+  test(
+    'source processing job input includes manual source description',
+    () async {
+      final now = clock.now().millisecondsSinceEpoch;
+      await database
+          .into(database.sourceItems)
+          .insert(
+            SourceItemsCompanion.insert(
+              id: 'src_described_image',
+              type: 'image',
+              sourceSummary: const Value('Manual image'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final runner = _RecordingRunner();
+      final queueSourceProcessing = QueueSourceProcessing(
+        aiJobRepository: aiJobRepository,
+        aiJobQueueRunner: runner,
+        aiJobIdFactory: () => 'job_source_description',
+        processingKickoffDelay: Duration.zero,
+      );
+
+      await queueSourceProcessing(
+        const QueueSourceProcessingParams(
+          'src_described_image',
+          sourceDescription: '  Family chat grocery request  ',
+        ),
+      );
+
+      final job = await _waitForJob(aiJobRepository, 'job_source_description');
+      expect(job.sourceId, 'src_described_image');
+      expect(job.inputJson, contains('"source_id":"src_described_image"'));
+      expect(job.inputJson, contains('"pipeline":"source_ingestion"'));
+      expect(
+        job.inputJson,
+        contains('"source_description":"Family chat grocery request"'),
+      );
+      expect(runner.requestCount, 1);
+    },
+  );
 
   test('queued job transitions to running and completed', () async {
     await createJob(aiJobRepository, 'job_complete');

@@ -19,8 +19,11 @@ import 'package:tag/core/local_storage/file_store/local_file_store.dart';
 import 'package:tag/core/local_storage/file_store/local_file_store_impl.dart';
 import 'package:tag/core/navigation/route_constants.dart';
 import 'package:tag/core/notifications/local_notification_permission_service.dart';
+import 'package:tag/core/platform/local_text_recognition_service.dart';
 import 'package:tag/core/startup/app_cubit.dart';
 import 'package:tag/core/use_cases/use_cases.dart';
+import 'package:tag/features/ai_processing/domain/entities/ai_processing_job_entity.dart';
+import 'package:tag/features/ai_processing/domain/repositories/ai_job_repository.dart';
 import 'package:tag/features/ai_processing/domain/services/ai_job_queue_runner.dart';
 import 'package:tag/features/ai_processing/domain/use_cases/process_next_ai_job.dart';
 import 'package:tag/features/cards/domain/use_cases/create_card_from_proposal.dart';
@@ -32,7 +35,6 @@ import 'package:tag/features/onboarding/domain/entities/onboarding_user_profile.
 import 'package:tag/features/onboarding/domain/repositories/onboarding_repository.dart';
 import 'package:tag/features/onboarding/domain/use_cases/load_user_profile.dart';
 import 'package:tag/features/source_ingestion/domain/services/manual_source_picker.dart';
-import 'package:tag/features/source_ingestion/presentation/logic/source_ingestion_cubit.dart';
 import 'package:tag/features/today/presentation/screens/today_screen.dart';
 import 'package:tag/utils/index.dart';
 import '../../../test_support/source_ingestion_test_support.dart';
@@ -497,7 +499,7 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
-  testWidgets('imports an image through the FAB and creates a Tag Card', (
+  testWidgets('imports a described image and creates a Tag Card', (
     tester,
   ) async {
     await locator.reset();
@@ -551,6 +553,7 @@ void main() {
       tagDatabase: TagDatabase.forTesting(NativeDatabase.memory()),
       localFileStore: const _FakeLocalFileStore(),
       cactusModelService: cactusModelService,
+      localTextRecognitionService: const _FakeLocalTextRecognitionService(),
     );
     await locator.unregister<AiJobQueueRunner>();
     locator.registerSingleton<AiJobQueueRunner>(_FakeAiJobQueueRunner());
@@ -583,15 +586,43 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byTooltip('Open actions'));
-    await tester.pump(const Duration(milliseconds: 220));
-    await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Attach image'));
-    });
-    final sourceCubit = tester
-        .element(find.byType(Scaffold))
-        .read<SourceIngestionCubit>();
-    await _waitForImageImport(tester, sourceCubit);
+    final database = locator<TagDatabase>();
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await database
+        .into(database.sourceItems)
+        .insert(
+          SourceItemsCompanion.insert(
+            id: 'src_described_image',
+            type: 'image',
+            originalUri: Value(imageFile.path),
+            localFilePath: Value(imageFile.path),
+            sourceSummary: const Value('Manual image - random-test-image.png'),
+            metadataJson: Value(
+              jsonEncode({
+                'imported_via': 'manual_image',
+                'source_description': 'Family chat grocery request',
+                'file_name': 'random-test-image.png',
+                'extension': 'png',
+                'size_bytes': imageFile.lengthSync(),
+              }),
+            ),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    await locator<AiJobRepository>().createJob(
+      CreateAiJobRequest(
+        id: 'job_described_image',
+        jobType: AiJobType.extractSource,
+        sourceId: 'src_described_image',
+        inputJson: jsonEncode({
+          'source_id': 'src_described_image',
+          'pipeline': 'source_ingestion',
+          'source_description': 'Family chat grocery request',
+        }),
+      ),
+    );
+    await tester.pump();
     await _disposeWidgetTree(tester);
     await _processQueuedAiJob(tester);
 
@@ -608,6 +639,14 @@ void main() {
 
     expect(cactusModelService.visionCompletionCount, 1);
     expect(cactusModelService.textCompletionCount, 1);
+    expect(
+      cactusModelService.lastVisionPrompt,
+      contains('Family chat grocery request'),
+    );
+    expect(
+      cactusModelService.lastTextPrompt,
+      contains('Family chat grocery request'),
+    );
     expect(find.text('URGENT'), findsOneWidget);
     expect(find.text('Buy bread'), findsOneWidget);
     expect(
@@ -616,6 +655,14 @@ void main() {
     );
     expect(find.text('Household Tasks'), findsOneWidget);
     expect(find.text('Random image screenshot'), findsOneWidget);
+
+    final sources = await database.select(database.sourceItems).get();
+    final jobs = await database.select(database.aiProcessingJobs).get();
+    expect(
+      sources.single.metadataJson,
+      contains('Family chat grocery request'),
+    );
+    expect(jobs.single.inputJson, contains('Family chat grocery request'));
 
     await tester.tap(find.byTooltip('Expand card'));
     await tester.pumpAndSettle();
@@ -673,7 +720,12 @@ Future<void> _processQueuedAiJob(
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
     for (var attempt = 0; attempt < attempts; attempt++) {
-      final job = await processNextAiJob(const NoParams());
+      final job = await processNextAiJob(const NoParams()).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw TestFailure('Processing queued AI job timed out.');
+        },
+      );
       if (job != null) {
         return true;
       }
@@ -705,27 +757,6 @@ Future<void> _pumpUntilFound(
   throw TestFailure(
     'Expected the created Tag Card to appear after processing queued AI jobs.',
   );
-}
-
-Future<void> _waitForImageImport(
-  WidgetTester tester,
-  SourceIngestionCubit sourceCubit,
-) async {
-  final status = await tester.runAsync<SourceIngestionStatus>(() async {
-    for (var attempt = 0; attempt < 50; attempt++) {
-      if (sourceCubit.state.status == SourceIngestionStatus.saved ||
-          sourceCubit.state.status == SourceIngestionStatus.failure) {
-        return sourceCubit.state.status;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-
-    return sourceCubit.state.status;
-  });
-
-  if (status != SourceIngestionStatus.saved) {
-    throw TestFailure('Expected image import to save, got ${status?.name}.');
-  }
 }
 
 Future<void> _seedNavigationCard() async {
@@ -954,6 +985,15 @@ class _FakeLocalFileStore implements LocalFileStore {
   Future<bool> deleteFileIfExists(String localPath) async => true;
 }
 
+class _FakeLocalTextRecognitionService implements LocalTextRecognitionService {
+  const _FakeLocalTextRecognitionService();
+
+  @override
+  Future<LocalRecognizedText> recognizeTextFromImage(String imagePath) async {
+    return LocalRecognizedText.empty;
+  }
+}
+
 class _FakeCactusModelService implements CactusModelService {
   _FakeCactusModelService({
     required List<String> visionResponses,
@@ -965,6 +1005,8 @@ class _FakeCactusModelService implements CactusModelService {
   final Queue<String> _textResponses;
   int visionCompletionCount = 0;
   int textCompletionCount = 0;
+  String? lastVisionPrompt;
+  String? lastTextPrompt;
 
   @override
   Future<List<LocalAiModelInfo>> getAvailableModels() async {
@@ -990,6 +1032,7 @@ class _FakeCactusModelService implements CactusModelService {
     AiCompletionOptions options = const AiCompletionOptions(),
   }) async {
     textCompletionCount++;
+    lastTextPrompt = messages.map((message) => message.content).join('\n');
     return AiCompletionResult(response: _textResponses.removeFirst());
   }
 
@@ -1002,6 +1045,7 @@ class _FakeCactusModelService implements CactusModelService {
     AiCompletionOptions options = const AiCompletionOptions(),
   }) async {
     visionCompletionCount++;
+    lastVisionPrompt = messages.map((message) => message.content).join('\n');
     return AiVisionResult(response: _visionResponses.removeFirst());
   }
 

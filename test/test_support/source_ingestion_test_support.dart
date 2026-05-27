@@ -9,6 +9,7 @@ Future<void> registerStableSourceIngestionCubitForWidgetTests() async {
   locator.registerFactory(
     () => SourceIngestionCubit(
       importImageSource: locator<ImportImageSource>(),
+      manualSourcePicker: locator<ManualSourcePicker>(),
       createTextSource: locator<CreateTextSource>(),
       watchRecentSources: _StableWatchRecentSources(
         locator<SourceRepository>(),

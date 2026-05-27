@@ -94,6 +94,8 @@ Rules:
 - Use "passive" when no clear user action exists or confidence is below 0.60.
 - next_active_deadline must be null or ISO-8601 with timezone when evidence
   supports it. Never invent a deadline.
+- Use source_description as user-provided import context when present, but keep
+  reason and evidence_summary grounded in the saved source.
 ''';
 
   static String extractionUserPromptForText(SourceItemEntity source) {
@@ -114,6 +116,7 @@ Return valid JSON only.
     SourceItemEntity source, {
     String? recognizedText,
   }) {
+    final descriptionBlock = _sourceDescriptionPromptBlock(source);
     final ocrText = recognizedText?.trim();
     final ocrBlock = ocrText == null || ocrText.isEmpty
         ? ''
@@ -125,7 +128,7 @@ $ocrText
 
     return '''
 Extract source content from the attached saved image for Tag.
-Inspect the attached image itself. Use the on-device OCR text as source evidence when it is present, correcting obvious OCR mistakes from the image. Preserve direct request wording and visible deadlines exactly. Do not copy these instructions or any hidden source metadata.$ocrBlock
+Inspect the attached image itself. Use the on-device OCR text as source evidence when it is present, correcting obvious OCR mistakes from the image. Preserve direct request wording and visible deadlines exactly. Do not copy these instructions or any hidden source metadata.$descriptionBlock$ocrBlock
 
 Return valid JSON only.
 ''';
@@ -166,12 +169,31 @@ Return only one corrected JSON object matching the requested schema.
   }
 
   static String _sourceContext(SourceItemEntity source) {
+    final sourceDescription = source.sourceDescription;
+    final sourceDescriptionLine = sourceDescription == null
+        ? ''
+        : 'source_description: $sourceDescription\n';
     return '''
 id: ${source.id}
 type: ${source.type.storageValue}
 app_source: ${source.appSource ?? 'Manual'}
 summary: ${source.sourceSummary ?? 'Saved source'}
-content_type: ${source.contentType}
+${sourceDescriptionLine}content_type: ${source.contentType}
+''';
+  }
+
+  static String _sourceDescriptionPromptBlock(SourceItemEntity source) {
+    final description = source.sourceDescription;
+    if (description == null) {
+      return '';
+    }
+
+    return '''
+
+User-provided source_description:
+$description
+
+Use source_description only to disambiguate why the user saved the image. Keep extracted text, dates, times, links, and visible entities grounded in the attached image or OCR.
 ''';
   }
 }

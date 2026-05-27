@@ -77,7 +77,7 @@ void main() {
       );
 
       final source = await importImageSource(
-        const NoParams(),
+        const ImportImageSourceParams(),
       ).timeout(const Duration(seconds: 1));
 
       expect(source, isNotNull);
@@ -96,6 +96,47 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.single.processingState, 'saved');
       await queue.started.future.timeout(const Duration(seconds: 1));
+      queue.complete();
+    },
+  );
+
+  test(
+    'manual image description is saved as metadata and queued for processing',
+    () async {
+      final importedImage = File(p.join(tempDirectory.path, 'described.png'));
+      await importedImage.writeAsBytes([1, 2, 3, 4], flush: true);
+      final queue = _ControlledQueueSourceProcessing();
+      final importImageSource = ImportImageSource(
+        manualSourcePicker: _FakeManualSourcePicker(
+          PickedImageSource(
+            path: importedImage.path,
+            displayName: 'described.png',
+            extension: 'png',
+            sizeBytes: 4,
+          ),
+        ),
+        storeSourceFile: storeSourceFile,
+        sourceRepository: sourceRepository,
+        queueSourceProcessing: queue,
+        sourceIdFactory: () => 'src_described_image',
+      );
+
+      final source = await importImageSource(
+        const ImportImageSourceParams(
+          sourceDescription: '  Family chat grocery request  ',
+        ),
+      ).timeout(const Duration(seconds: 1));
+
+      expect(source, isNotNull);
+      expect(source!.sourceDescription, 'Family chat grocery request');
+      expect(source.metadataJson, contains('"source_description"'));
+      expect(source.metadataJson, contains('Family chat grocery request'));
+      await queue.started.future.timeout(const Duration(seconds: 1));
+      expect(queue.params.single.sourceId, 'src_described_image');
+      expect(
+        queue.params.single.sourceDescription,
+        'Family chat grocery request',
+      );
       queue.complete();
     },
   );
@@ -319,10 +360,12 @@ class _ControlledQueueSourceProcessing extends QueueSourceProcessing {
   final Completer<void> started = Completer<void>();
   final Completer<void> completion = Completer<void>();
   final List<String> sourceIds = [];
+  final List<QueueSourceProcessingParams> params = [];
 
   @override
   Future<void> call(QueueSourceProcessingParams params) {
     sourceIds.add(params.sourceId);
+    this.params.add(params);
     if (!started.isCompleted) {
       started.complete();
     }
