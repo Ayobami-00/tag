@@ -169,9 +169,10 @@ Return only one corrected JSON object matching the requested schema.
   }
 
   static String _sourceContext(SourceItemEntity source) {
-    final sourceDescriptionLine = source.sourceDescription == null
+    final sourceDescription = source.sourceDescription;
+    final sourceDescriptionLine = sourceDescription == null
         ? ''
-        : 'source_description: ${source.sourceDescription}\n';
+        : 'source_description: $sourceDescription\n';
     return '''
 id: ${source.id}
 type: ${source.type.storageValue}

@@ -79,7 +79,19 @@ class SourceIngestionCubit extends Cubit<SourceIngestionState> {
         return;
       }
 
-      final sourceDescription = await requestDescription?.call(pickedImage);
+      final sourceDescription = requestDescription == null
+          ? null
+          : await requestDescription(pickedImage);
+      if (requestDescription != null && sourceDescription == null) {
+        emit(
+          state.copyWith(
+            status: SourceIngestionStatus.ready,
+            actionMessage: '',
+          ),
+        );
+        return;
+      }
+
       final source = await _importImageSource(
         ImportImageSourceParams(
           pickedImage: pickedImage,
