@@ -3,7 +3,7 @@
   <h1>Tag</h1>
   <p><strong>Never lose the reason you saved something.</strong></p>
   <p>A local-first intention inbox that turns saved screenshots and notes into source-backed cards.</p>
-  <p><strong>Tag is currently in beta.</strong> <a href="https://forms.gle/1mPQuYme2nKVytps9">Join the beta waitlist</a>.</p>
+  <p><strong>Tag is currently in beta.</strong> <a href="https://testflight.apple.com/join/yusxUSC6">Try in beta</a>.</p>
 </div>
 
 ## Overview
